@@ -1,0 +1,53 @@
+{
+  "name": "radashi-helper",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Help with managing your Radashi fork",
+  "author": "Alec Larson",
+  "license": "MIT",
+  "bin": {
+    "radashi": "./bin/radashi-helper.js"
+  },
+  "exports": {
+    "./esbuild": {
+      "types": "./dist/esbuild/plugin.d.ts",
+      "default": "./dist/esbuild/plugin.js"
+    },
+    "./vitest": {
+      "types": "./dist/vitest/plugin.d.ts",
+      "default": "./dist/vitest/plugin.js"
+    }
+  },
+  "keywords": [
+    "radashi",
+    "cli"
+  ],
+  "scripts": {
+    "build": "tsup --clean",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
+    "@typescript-eslint/parser": "^7.16.1",
+    "cac": "^6.7.14",
+    "esbuild": "^0.23.0",
+    "escalade": "^3.1.2",
+    "eslint-plugin-compat": "^6.0.0",
+    "execa": "^9.3.0",
+    "fast-glob": "^3.3.2",
+    "open": "^10.1.0",
+    "openai": "^4.52.7",
+    "parse-imports-exports": "^0.1.1",
+    "prompts": "^2.4.2",
+    "radashi": "12.2.0-beta.4aac7d7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/prompts": "^2.4.9",
+    "prettier": "^3.3.3",
+    "prettier-plugin-pkg": "^0.18.1",
+    "tsup": "^8.1.2",
+    "type-fest": "^4.22.0",
+    "typescript": "^5.5.3"
+  }
+}
