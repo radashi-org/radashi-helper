@@ -1,14 +1,27 @@
 import cac from 'cac'
-import { dedent } from './util/dedent'
 
 const app = cac('radashi')
 
 app
-  .command('functions add', 'Scaffold the files for a custom function')
-  .option('--ai', 'Use AI to generate a first draft of the function')
-  .action(async () => {})
+  .command('build')
+  .option('--watch', 'Watch for changes')
+  .action(async flags => {
+    const { default: build } = await import('./build')
+    await build(flags)
+  })
 
-app.command('override rm', 'Remove an override').action(async () => {})
+app.command('fn <subcommand>').action(async () => {
+  const fn = cac('radashi fn')
+
+  fn.command('add <name>', 'Scaffold the files for a custom function').action(
+    async (name: string) => {
+      const { addFunction } = await import('./fn-add')
+      await addFunction(name)
+    },
+  )
+
+  run(process.argv, fn, 1)
+})
 
 app
   .command('override <query>', 'Add an override')
@@ -17,45 +30,53 @@ app
     await addOverride(query)
   })
 
-app
-  .command('build')
-  .option('--watch', 'Watch for changes')
-  .option('--esm', 'Execute the ESM build only')
-  .action(async flags => {
-    const { default: build } = await import('./build')
-    await build(flags)
+app.command('pr <subcommand>').action(async () => {
+  const pr = cac('radashi pr')
+
+  pr.command(
+    'create',
+    'Create a radashi-org/radashi pull request from your current branch',
+  ).action(async () => {
+    const { createPullRequest } = await import('./pr-create')
+    createPullRequest()
   })
 
-app.command('workflows add').action(async () => {
-  // TODO
-})
+  pr.command(
+    'import <number>',
+    'Copy files from a radashi-org/radashi pull request into your fork',
+  ).action(async (prNumber: string) => {
+    const { importPullRequest } = await import('./pr-import')
+    importPullRequest(prNumber)
+  })
 
-app.command('pr create').action(async () => {
-  // const { createPullRequest } = await import('./pr-create')
-  // createPullRequest()
+  run(process.argv, pr, 1)
 })
 
 app.command('lint [...files]').action(async files => {
-  const { lintBrowserCompatibility } = await import('./lint')
-  await lintBrowserCompatibility(files)
+  const { lint } = await import('./lint')
+  await lint(files)
 })
 
 app.command('init').action(async () => {
+  const { writeFile } = await import('node:fs/promises')
+  const { dedent } = await import('./util/dedent')
+
   const envFile = `
-    # Place your OpenAI, Deepseek, or Claude API keys here.
-    # Then use the --ai flag when running \`pnpm functions add\`.
-    OPENAI_API_KEY=""
-    DEEPSEEK_API_KEY=""
+    # Required for --ai flag.
     CLAUDE_API_KEY=""
   `
-  const { writeFile } = await import('node:fs/promises')
+
   await writeFile('.env.development', dedent(envFile))
 })
 
-export function run(args: string[]) {
+export function run(args: string[], program = app, offset = 0) {
+  if (offset > 0) {
+    args = args.slice()
+    args.splice(2, offset)
+  }
   if (args.length === 2) {
-    app.outputHelp()
+    program.outputHelp()
     process.exit(0)
   }
-  app.parse(args, { run: true })
+  program.parse(args, { run: true })
 }

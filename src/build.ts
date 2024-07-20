@@ -1,18 +1,23 @@
-import { build, BuildOptions } from 'esbuild'
-import { Env, getEnv } from './env'
-import { join } from 'node:path'
-import { esbuildRadashi } from './esbuild/plugin'
+import { BuildOptions, build, context as createContext } from 'esbuild'
 import { execa } from 'execa'
+import { join } from 'node:path'
+import { sift } from 'radashi'
+import { rimraf } from 'rimraf'
+import { getEnv } from './env'
+import { esbuildRadashi } from './esbuild/plugin'
 
-export default async function (flags?: { watch?: boolean; esm?: boolean }) {
+export default async function (flags?: { watch?: boolean }) {
   const env = getEnv()
-  const { pkg, root } = env
+  const { root, config } = env
+  const { outDir } = config
+
+  await rimraf(outDir)
 
   const options: BuildOptions = {
     entryPoints: [join(root, 'src/mod.ts')],
     external: ['@radashi/core'],
     bundle: true,
-    outfile: join(root, `dist/esm/radashi.js`),
+    outfile: join(outDir, 'radashi.js'),
     platform: 'node',
     target: 'node16',
     format: 'esm',
@@ -20,29 +25,58 @@ export default async function (flags?: { watch?: boolean; esm?: boolean }) {
     logLevel: 'info',
   }
 
-  // ESM
-  await build(options)
-
-  if (flags?.esm !== true) {
-    // CJS
-    options.format = 'cjs'
-    options.outfile = join(root, `dist/cjs/${pkg.name}.cjs`)
-    await build(options)
+  const cjsOptions = {
+    ...options,
+    format: 'cjs' as const,
+    outfile: join(outDir, 'radashi.cjs'),
   }
 
-  await execa(
+  if (flags?.watch) {
+    const ctx = await createContext(
+      config.formats.includes('esm') ? options : cjsOptions,
+    )
+    await ctx.watch()
+  } else {
+    // ESM
+    if (config.formats.includes('esm')) {
+      await build(options)
+    }
+
+    // CJS
+    if (config.formats.includes('cjs')) {
+      await build(cjsOptions)
+    }
+  }
+
+  // DTS
+  if (config.dts) {
+    await emitDeclarationTypes(root, join(outDir, 'dts'), flags)
+  }
+}
+
+async function emitDeclarationTypes(
+  root: string,
+  outDir: string,
+  flags?: { watch?: boolean },
+) {
+  const result = execa(
     'pnpm',
-    [
+    sift([
       'tsc',
+      flags?.watch && '--watch',
+      flags?.watch && '--preserveWatchOutput',
       '--emitDeclarationOnly',
       '--outDir',
-      'dist/dts',
+      outDir,
       '--project',
       'src/tsconfig.json',
-    ],
+    ]),
     {
       cwd: root,
       stdio: 'inherit',
     },
   )
+  if (!flags?.watch) {
+    await result
+  }
 }

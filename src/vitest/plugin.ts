@@ -1,12 +1,17 @@
-export function vitestRadashi() {
+import { relative } from 'node:path'
+import { getEnv } from '../env'
+import { generateUmbrella } from '../util/generateUmbrella'
+
+export function vitestRadashi(): import('vite').Plugin {
+  const env = getEnv()
+
   return {
     name: 'vitest-radashi',
-    async config(config: { esbuild?: any }) {
-      if (config.esbuild === false) return
-      const { esbuildRadashi } = await import('../esbuild/plugin')
-      config.esbuild ||= {}
-      config.esbuild.plugins ||= []
-      config.esbuild.plugins.push(esbuildRadashi())
+    async load(id) {
+      if (relative(env.root, id) === 'src/mod.ts') {
+        const code = await generateUmbrella(env)
+        return { code }
+      }
     },
   }
 }

@@ -1,15 +1,51 @@
-import type { PackageJson } from 'type-fest'
 import escalade from 'escalade/sync'
-import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import type { PackageJson } from 'type-fest'
+
+/**
+ * The config located at `./radashi.json`
+ */
+export interface UserConfig {
+  /**
+   * Whether to emit TypeScript declaration files.
+   *
+   * @default false
+   */
+  dts?: boolean
+  /**
+   * Control which bundle formats are used.
+   *
+   * @default ['esm']
+   */
+  formats?: ('esm' | 'cjs')[]
+  /**
+   * The directory to output the bundles to.
+   *
+   * @default 'dist'
+   */
+  outDir?: string
+  /**
+   * The branch to clone the upstream repository from. You may want to
+   * set this to an exact commit if you want to pin the version of
+   * Radashi.
+   *
+   * @default 'main'
+   */
+  branch?: string
+}
+
+export interface Config extends Required<UserConfig> {}
 
 export interface Env {
   pkg: PackageJson
+  config: Config
   root: string
   radashiDir: string
+  overrideDir: string
 }
 
-export function getEnv(root?: string | void) {
+export function getEnv(root?: string | void): Env {
   root ??= escalade(process.cwd(), (dir, files) => {
     return files.includes('package.json') && dir
   })
@@ -23,6 +59,31 @@ export function getEnv(root?: string | void) {
   ) as PackageJson
 
   const radashiDir = join(root, '.radashi/upstream')
+  const overrideDir = join(root, 'overrides')
 
-  return { pkg, root, radashiDir }
+  return {
+    pkg,
+    root,
+    config: getConfig(root),
+    radashiDir,
+    overrideDir,
+  }
+}
+
+function getConfig(root: string): Config {
+  let config: UserConfig
+  try {
+    config = JSON.parse(
+      readFileSync(join(root, 'radashi.json'), 'utf8'),
+    ) as UserConfig
+  } catch (error) {
+    console.error('Error parsing radashi.json:', error)
+    config = {} as UserConfig
+  }
+  return {
+    dts: true,
+    formats: ['esm'],
+    ...config,
+    outDir: resolve(root, config.outDir ?? 'dist'),
+  }
 }

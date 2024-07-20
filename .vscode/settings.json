@@ -1,5 +1,8 @@
 {
   "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit"
-  }
+    "source.organizeImports": "explicit",
+  },
+  "[typescript]": {
+    "rewrap.wrappingColumn": 70
+  },
 }
