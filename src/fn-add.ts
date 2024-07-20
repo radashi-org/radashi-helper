@@ -1,14 +1,15 @@
-import { existsSync, statSync } from 'node:fs'
+import { execa } from 'execa'
+import { existsSync } from 'node:fs'
 import { mkdir, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { getEnv } from './env'
 import { cloneRadashi } from './util/cloneRadashi'
 import { dedent } from './util/dedent'
+import { fatal } from './util/logger'
 
 export async function addFunction(funcName: string) {
   if (funcName.includes('/')) {
-    console.error('Error: Function name cannot include slashes.')
-    process.exit(1)
+    fatal('Function name cannot include slashes.')
   }
 
   const env = getEnv()
@@ -45,10 +46,7 @@ export async function addFunction(funcName: string) {
   }
 
   if (!group || !funcName) {
-    console.error(
-      'Error: Invalid input format. Please use <group-name>/<function-name>',
-    )
-    process.exit(1)
+    fatal('Invalid input format. Please use <group-name>/<function-name>')
   }
 
   const directories = {
@@ -87,17 +85,14 @@ export async function addFunction(funcName: string) {
     generateBenchmarksContent(funcName),
   )
 
+  // Open the new src file in editor.
+  if (process.env.EDITOR) {
+    await execa(process.env.EDITOR!, [files.src])
+  }
+
   // Update src/mod.ts
   const { default: build } = await import('./build')
   await build()
-}
-
-function directoryExists(dir: string): boolean {
-  try {
-    return statSync(dir).isDirectory()
-  } catch {
-    return false
-  }
 }
 
 async function createFile(file: string, content: string): Promise<void> {

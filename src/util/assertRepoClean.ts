@@ -1,11 +1,11 @@
 import { isRepoClean } from './isRepoClean'
+import { fatal } from './logger'
 
 export async function assertRepoClean(cwd: string) {
   if (!(await isRepoClean(cwd))) {
-    console.error(
-      'Error: Your repository has uncommitted changes.' +
+    fatal(
+      'Your repository has uncommitted changes.' +
         ' Please commit or stash them before overriding.',
     )
-    process.exit(1)
   }
 }

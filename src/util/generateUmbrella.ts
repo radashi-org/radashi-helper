@@ -1,28 +1,13 @@
-import { copyFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { Env } from '../env'
-import { loadRewired } from '../rewired/loadRewired'
-import { rewire } from '../rewired/rewire'
-import { debug } from './debug'
+import { updateRewired } from '../rewired/updateRewired'
 import { dedent } from './dedent'
 import { findSources } from './findSources'
 import { getExportedNames } from './getExportedNames'
 
 export async function generateUmbrella(env: Env) {
   // Update rewired files on every build.
-  const prevRewired = await loadRewired(env)
-  if (prevRewired.length) {
-    debug(`Updating ${prevRewired.length} rewired files...`)
-    await Promise.all(
-      prevRewired.map(async funcPath => {
-        await rewire(funcPath, env)
-      }),
-    )
-    await copyFile(
-      join(env.root, 'overrides/src/tsconfig.json'),
-      join(env.root, 'overrides/rewired/tsconfig.json'),
-    )
-  }
+  await updateRewired(env)
 
   const { sourceFiles, overrides, rewired } = await findSources(env)
 

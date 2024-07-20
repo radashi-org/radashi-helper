@@ -83,6 +83,7 @@ function getConfig(root: string): Config {
   return {
     dts: true,
     formats: ['esm'],
+    branch: 'main',
     ...config,
     outDir: resolve(root, config.outDir ?? 'dist'),
   }

@@ -5,6 +5,7 @@ import globRegex from 'glob-regex'
 import { yellow } from 'kleur/colors'
 import { dirname, join, relative } from 'path'
 import { objectify } from 'radashi'
+import { botCommit } from './bot'
 import { getEnv } from './env'
 import { addOverride } from './override'
 import { undoRewire } from './rewired/undoRewire'
@@ -15,17 +16,17 @@ import { debug } from './util/debug'
 import { dedent } from './util/dedent'
 import { findSources } from './util/findSources'
 import { getExportedNames } from './util/getExportedNames'
+import { fatal } from './util/logger'
 
 export async function importPullRequest(prNumber: string) {
   if (Number.isNaN(+prNumber)) {
-    console.error(`Error: Invalid PR number "${prNumber}"`)
-    process.exit(1)
+    fatal(`Invalid PR number "${prNumber}"`)
   }
 
   if (!(await checkCommand('gh'))) {
-    console.error(
+    fatal(
       dedent`
-        Error: gh command is not installed.
+        gh command is not installed.
 
         You can install it using Homebrew:
           brew install gh
@@ -34,7 +35,6 @@ export async function importPullRequest(prNumber: string) {
           https://cli.github.com/
       `,
     )
-    process.exit(1)
   }
 
   const env = getEnv()
@@ -104,10 +104,9 @@ export async function importPullRequest(prNumber: string) {
       if (change.file.startsWith('src/')) {
         const srcPath = join(env.root, change.file)
         if (names.sourceFiles.includes(srcPath)) {
-          console.error(
-            `Error: Cannot import PR. File named "${change.file}" is already a source file created by you.`,
+          fatal(
+            `Cannot import PR. File named "${change.file}" is already a source file created by you.`,
           )
-          process.exit(1)
         }
       }
     } else if (change.status === 'M') {
@@ -119,10 +118,9 @@ export async function importPullRequest(prNumber: string) {
           change.file.replace('src/', 'overrides/src/'),
         )
         if (names.overrides.includes(overridePath)) {
-          console.error(
-            `Error: Cannot import PR. File named "${change.file}" already exists in the overrides folder.`,
+          fatal(
+            `Cannot import PR. File named "${change.file}" already exists in the overrides folder.`,
           )
-          process.exit(1)
         }
 
         const funcPath = relative(env.overrideDir, overridePath).slice(0, -3)
@@ -188,15 +186,9 @@ export async function importPullRequest(prNumber: string) {
     prTitle = `${type}: ${description}`
   }
 
-  const commitScript = dedent`
-    set -e
-    git add -A
-    git commit -m "${prTitle}"
-    git push
-  `
-  await execa('bash', ['-c', commitScript], {
+  await botCommit(prTitle, {
     cwd: env.root,
-    stdio: 'inherit',
+    add: ['-A'],
   })
 }
 

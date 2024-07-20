@@ -3,14 +3,14 @@ import cac from 'cac'
 const app = cac('radashi')
 
 app
-  .command('build')
+  .command('build', 'Compile and bundle the project, writing to the filesystem')
   .option('--watch', 'Watch for changes')
   .action(async flags => {
     const { default: build } = await import('./build')
     await build(flags)
   })
 
-app.command('fn <subcommand>').action(async () => {
+app.command('fn [subcommand]', 'Manage your functions').action(async () => {
   const fn = cac('radashi fn')
 
   fn.command('add <name>', 'Scaffold the files for a custom function').action(
@@ -24,49 +24,51 @@ app.command('fn <subcommand>').action(async () => {
 })
 
 app
-  .command('override <query>', 'Add an override')
+  .command('override <query>', 'Override a function from Radashi upstream')
   .action(async (query: string) => {
     const { addOverride } = await import('./override')
     await addOverride(query)
   })
 
-app.command('pr <subcommand>').action(async () => {
-  const pr = cac('radashi pr')
+app
+  .command('pr [subcommand]', 'Create and import pull requests')
+  .action(async () => {
+    const pr = cac('radashi pr')
 
-  pr.command(
-    'create',
-    'Create a radashi-org/radashi pull request from your current branch',
-  ).action(async () => {
-    const { createPullRequest } = await import('./pr-create')
-    createPullRequest()
+    pr.command(
+      'create',
+      'Create a radashi-org/radashi pull request from your current branch',
+    )
+      .option(
+        '-b, --breaking-change',
+        'Target the "next" branch instead of main',
+      )
+      .action(async flags => {
+        const { createPullRequest } = await import('./pr-create')
+        createPullRequest(flags)
+      })
+
+    pr.command(
+      'import <number>',
+      'Copy files from a radashi-org/radashi pull request into your fork',
+    ).action(async (prNumber: string) => {
+      const { importPullRequest } = await import('./pr-import')
+      importPullRequest(prNumber)
+    })
+
+    run(process.argv, pr, 1)
   })
 
-  pr.command(
-    'import <number>',
-    'Copy files from a radashi-org/radashi pull request into your fork',
-  ).action(async (prNumber: string) => {
-    const { importPullRequest } = await import('./pr-import')
-    importPullRequest(prNumber)
+app
+  .command('lint [...files]', 'Check for browser compatibility issues')
+  .action(async files => {
+    const { lint } = await import('./lint')
+    await lint(files)
   })
 
-  run(process.argv, pr, 1)
-})
-
-app.command('lint [...files]').action(async files => {
-  const { lint } = await import('./lint')
-  await lint(files)
-})
-
-app.command('init').action(async () => {
-  const { writeFile } = await import('node:fs/promises')
-  const { dedent } = await import('./util/dedent')
-
-  const envFile = `
-    # Required for --ai flag.
-    CLAUDE_API_KEY=""
-  `
-
-  await writeFile('.env.development', dedent(envFile))
+app.command('help', 'Walk through a tutorial').action(async () => {
+  const { help } = await import('./help')
+  help()
 })
 
 export function run(args: string[], program = app, offset = 0) {
@@ -78,5 +80,6 @@ export function run(args: string[], program = app, offset = 0) {
     program.outputHelp()
     process.exit(0)
   }
+  program.help()
   program.parse(args, { run: true })
 }

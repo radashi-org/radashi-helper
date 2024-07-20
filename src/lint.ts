@@ -2,6 +2,7 @@ import { execa } from 'execa'
 import glob from 'fast-glob'
 import { dirname, join, relative } from 'node:path'
 import { getEnv } from './env'
+import { fatal } from './util/logger'
 
 export async function lint(files: string[]) {
   const env = getEnv()
@@ -20,8 +21,7 @@ export async function lint(files: string[]) {
         stdio: 'inherit',
       }).catch(error => {
         console.error(error.message)
-        console.error('Biome failed to lint.')
-        process.exit(1)
+        fatal('Biome failed to lint.')
       })
     }
   }
@@ -44,8 +44,7 @@ export async function lint(files: string[]) {
     },
   ).catch(error => {
     console.error(error.message)
-    console.error('ESLint failed to lint.')
-    process.exit(1)
+    fatal('ESLint failed to lint.')
   })
 
   if (lintOutput.exitCode !== 0) {
