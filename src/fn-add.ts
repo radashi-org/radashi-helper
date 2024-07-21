@@ -1,10 +1,11 @@
 import { execa } from 'execa'
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { getEnv } from './env'
 import { cloneRadashi } from './util/cloneRadashi'
 import { dedent } from './util/dedent'
+import { getRadashiGroups } from './util/getRadashiGroups'
 import { fatal } from './util/logger'
 
 export async function addFunction(funcName: string) {
@@ -15,11 +16,7 @@ export async function addFunction(funcName: string) {
   const env = getEnv()
   await cloneRadashi(env)
 
-  const upstreamDir = join(env.root, '.radashi/upstream/src')
-  const existingDirs = await readdir(upstreamDir, { withFileTypes: true })
-  const groups = existingDirs
-    .filter(dirent => dirent.isDirectory())
-    .map(dirent => dirent.name)
+  const groups = await getRadashiGroups(env)
 
   const { default: prompts } = await import('prompts')
   const { selectedGroup } = await prompts({
@@ -90,7 +87,7 @@ export async function addFunction(funcName: string) {
     await execa(process.env.EDITOR!, [files.src])
   }
 
-  // Update src/mod.ts
+  // Update mod.ts
   const { default: build } = await import('./build')
   await build()
 }

@@ -1,4 +1,5 @@
 import cac from 'cac'
+import { dedent } from './util/dedent'
 
 const app = cac('radashi')
 
@@ -19,6 +20,26 @@ app.command('fn [subcommand]', 'Manage your functions').action(async () => {
       await addFunction(name)
     },
   )
+
+  fn.command('move <name>', 'Rename a function‘s files')
+    .example(
+      bin =>
+        dedent`
+          # Rename "objectify" to "objectToArray"
+          ${bin} move array/objectify objectToArray
+        `,
+    )
+    .example(
+      bin =>
+        dedent`
+          # Move "sum" to the array group.
+          ${bin} move number/sum array/sum
+        `,
+    )
+    .action(async (funcPath: string) => {
+      const { moveFunction } = await import('./fn-move')
+      await moveFunction(funcPath)
+    })
 
   run(process.argv, fn, 1)
 })

@@ -18,8 +18,8 @@ export async function generateUmbrella(env: Env) {
   )
 
   let code = printExports(
-    join(env.root, 'node_modules/@radashi/core/dist/radashi.d.ts'),
-    '@radashi/core',
+    join(env.root, 'node_modules/radashi/dist/radashi.d.ts'),
+    'radashi',
     // Don't re-export names that were defined in the custom Radashi.
     exportName => !namesBlocked.includes(exportName),
   )
@@ -30,10 +30,7 @@ export async function generateUmbrella(env: Env) {
       // Our custom functions.
       ${sourceFiles
         .map(file => {
-          return printExports(
-            file,
-            './' + relative(join(env.root, 'src'), file),
-          )
+          return printExports(file, './' + relative(env.root, file))
         })
         .join('\n')}
     `
@@ -45,7 +42,7 @@ export async function generateUmbrella(env: Env) {
       // Our overrides.
       ${overrides
         .map(file => {
-          return printExports(file, relative(join(env.root, 'src'), file))
+          return printExports(file, './' + relative(env.root, file))
         })
         .join('\n')}
     `
@@ -57,7 +54,7 @@ export async function generateUmbrella(env: Env) {
       // Rewired to use our overrides.
       ${rewired
         .map(file => {
-          return printExports(file, relative(join(env.root, 'rewired'), file))
+          return printExports(file, './' + relative(env.root, file))
         })
         .join('\n')}
     `

@@ -25,14 +25,6 @@ export interface UserConfig {
    * @default 'dist'
    */
   outDir?: string
-  /**
-   * The branch to clone the upstream repository from. You may want to
-   * set this to an exact commit if you want to pin the version of
-   * Radashi.
-   *
-   * @default 'main'
-   */
-  branch?: string
 }
 
 export interface Config extends Required<UserConfig> {}

@@ -3,11 +3,23 @@ import { existsSync } from 'node:fs'
 import { memo } from 'radashi'
 import { Env } from '../env'
 import { isExactCommit } from './isExactCommit'
-import { info } from './logger'
+import { fatal, info } from './logger'
 
 export const cloneRadashi = memo<[env: Env], Promise<void>>(
   async function cloneRadashi(env) {
-    const { branch } = env.config
+    const radashiSpecifier = env.pkg.dependencies?.['radashi']
+    if (!radashiSpecifier) {
+      fatal('No radashi dependency found in package.json')
+    }
+
+    let branch = radashiSpecifier.split('@').pop()!
+    if (branch === 'beta') {
+      branch = 'main'
+    } else if (branch !== 'next') {
+      branch = await execa('npm', ['view', 'radashi@' + branch, '--json']).then(
+        ({ stdout }) => 'v' + JSON.parse(stdout).version,
+      )
+    }
 
     if (existsSync(env.radashiDir)) {
       if (isExactCommit(branch)) {

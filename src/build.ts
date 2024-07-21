@@ -14,8 +14,8 @@ export default async function (flags?: { watch?: boolean }) {
   await rimraf(outDir)
 
   const options: BuildOptions = {
-    entryPoints: [join(root, 'src/mod.ts')],
-    external: ['@radashi/core'],
+    entryPoints: [join(root, 'mod.ts')],
+    external: ['radashi'],
     bundle: true,
     outfile: join(outDir, 'radashi.js'),
     platform: 'node',
@@ -69,7 +69,7 @@ async function emitDeclarationTypes(
       '--outDir',
       outDir,
       '--project',
-      'src/tsconfig.json',
+      'tsconfig.dts.json',
     ]),
     {
       cwd: root,
