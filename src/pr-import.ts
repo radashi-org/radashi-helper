@@ -132,7 +132,8 @@ export async function importPullRequest(prNumber: string) {
         }
 
         // Override the file before applying the PR modifications.
-        await addOverride(funcPath, env, {
+        await addOverride(funcPath, {
+          env,
           exactMatch: true,
           fromBranch: targetBranch,
         })
@@ -171,7 +172,7 @@ export async function importPullRequest(prNumber: string) {
 
     const { default: prompts } = await import('prompts')
     const { type } = await prompts({
-      type: 'select',
+      type: 'autocomplete',
       name: 'type',
       message: 'Select the type of change:',
       choices: getConventionalCommitTypes(),

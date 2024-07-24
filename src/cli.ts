@@ -1,4 +1,5 @@
 import cac from 'cac'
+import { execaSync } from 'execa'
 import { dedent } from './util/dedent'
 
 const app = cac('radashi')
@@ -21,7 +22,7 @@ app.command('fn [subcommand]', 'Manage your functions').action(async () => {
     },
   )
 
-  fn.command('move <name>', 'Rename a function‘s files')
+  fn.command('move [funcPath]', 'Rename a function‘s files')
     .example(
       bin =>
         dedent`
@@ -45,10 +46,11 @@ app.command('fn [subcommand]', 'Manage your functions').action(async () => {
 })
 
 app
-  .command('override <query>', 'Override a function from Radashi upstream')
-  .action(async (query: string) => {
+  .command('override [query]', 'Override a function from Radashi upstream')
+  .option('-E, --exact-match', 'Only match exact function names')
+  .action(async (query, flags) => {
     const { addOverride } = await import('./override')
-    await addOverride(query)
+    await addOverride(query, flags)
   })
 
 app
@@ -87,6 +89,21 @@ app
     await lint(files)
   })
 
+app
+  .command('format [...files]', 'Format files using Biome and Prettier')
+  .action(async files => {
+    const { format } = await import('./format')
+    await format(files)
+  })
+
+const testCmd = app
+  .command('test [...globs]', 'Run tests using Vitest')
+  .allowUnknownOptions()
+  .action(async (globs, flags) => {
+    const { startTestRunner } = await import('./test')
+    await startTestRunner(globs, flags)
+  })
+
 app.command('help', 'Walk through a tutorial').action(async () => {
   const { help } = await import('./help')
   help()
@@ -101,6 +118,12 @@ export function run(args: string[], program = app, offset = 0) {
     program.outputHelp()
     process.exit(0)
   }
-  program.help()
+  program.help(sections => {
+    if (args[2] === 'test') {
+      execaSync('pnpm', ['-s', 'vitest', '--help'], { stdio: 'inherit' })
+      return []
+    }
+    return sections
+  })
   program.parse(args, { run: true })
 }

@@ -1,3 +1,4 @@
+import { white } from 'kleur/colors'
 import { relative } from 'node:path'
 
 export function cwdRelative(path: string) {
@@ -5,5 +6,5 @@ export function cwdRelative(path: string) {
   if (!result.startsWith('..')) {
     result = `./${result}`
   }
-  return result
+  return white(result)
 }

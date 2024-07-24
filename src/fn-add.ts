@@ -1,4 +1,3 @@
-import { execa } from 'execa'
 import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -7,6 +6,7 @@ import { cloneRadashi } from './util/cloneRadashi'
 import { dedent } from './util/dedent'
 import { getRadashiGroups } from './util/getRadashiGroups'
 import { fatal } from './util/logger'
+import { openInEditor } from './util/openInEditor'
 
 export async function addFunction(funcName: string) {
   if (funcName.includes('/')) {
@@ -20,7 +20,7 @@ export async function addFunction(funcName: string) {
 
   const { default: prompts } = await import('prompts')
   const { selectedGroup } = await prompts({
-    type: 'select',
+    type: 'autocomplete',
     name: 'selectedGroup',
     message: 'Select a group for the function:',
     choices: [
@@ -83,9 +83,7 @@ export async function addFunction(funcName: string) {
   )
 
   // Open the new src file in editor.
-  if (process.env.EDITOR) {
-    await execa(process.env.EDITOR!, [files.src])
-  }
+  await openInEditor(files.src, env)
 
   // Update mod.ts
   const { default: build } = await import('./build')

@@ -4,25 +4,26 @@ import { copyFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { defer } from 'radashi'
 import { botCommit } from './bot'
-import { getEnv } from './env'
+import { Env, getEnv } from './env'
 import { rewireDependents } from './rewired/rewireDependents'
 import { assertRepoClean } from './util/assertRepoClean'
 import { cloneRadashi } from './util/cloneRadashi'
 import { cwdRelative } from './util/cwdRelative'
 import { debug } from './util/debug'
 import { getRadashiFuncPaths } from './util/getRadashiFuncPaths'
-import { fatal, info } from './util/logger'
+import { info } from './util/logger'
 import { projectFolders } from './util/projectFolders'
-import { similarity } from './util/similarity'
+import { queryFuncs } from './util/queryFuncs'
 
 export async function addOverride(
   query: string,
-  env = getEnv(),
   options: {
     exactMatch?: boolean
     fromBranch?: string
+    env?: Env
   } = {},
 ) {
+  const env = options.env ?? getEnv()
   await assertRepoClean(env.root)
   await cloneRadashi(env)
 
@@ -34,6 +35,7 @@ export async function addOverride(
       // Checkout the specified branch.
       await execa('git', ['checkout', options.fromBranch], {
         cwd: env.radashiDir,
+        stdio: 'inherit',
       })
 
       // Checkout the previous branch when copying is done.
@@ -45,65 +47,14 @@ export async function addOverride(
     }
 
     const funcPaths = await getRadashiFuncPaths(env)
+    const { funcPath, funcName } = await queryFuncs(query, funcPaths, {
+      exactMatch: options.exactMatch,
+      message: 'Which function do you want to copy?',
+      confirmMessage: 'Is "{funcPath}" the function you want to copy?',
+    })
 
-    if (options.exactMatch) {
-      bestMatch = query
-    } else {
-      const loweredQuery = query.toLowerCase()
-      const scores = funcPaths.map(funcPath => {
-        const funcName = funcPath.split('/').at(-1)!
-        return Math.min(
-          similarity(loweredQuery, funcName.toLowerCase()),
-          similarity(loweredQuery, funcPath.toLowerCase()),
-        )
-      })
-
-      const bestScore = Math.min(...scores)
-      const bestMatches = funcPaths.filter((_file, i) => {
-        return scores[i] === bestScore
-      })
-
-      if (!bestMatches.length) {
-        fatal(`No source file named "${query}" was found in Radashi`)
-      }
-
-      if (bestScore > 0) {
-        const prompts = (await import('prompts')).default
-
-        if (bestMatches.length > 1) {
-          const { selection } = await prompts({
-            type: 'select',
-            name: 'selection',
-            message: 'Which function do you want to copy?',
-            choices: bestMatches.map(f => ({
-              title: f,
-              value: f,
-            })),
-          })
-          if (!selection) {
-            process.exit(1)
-          }
-          bestMatch = selection
-        } else {
-          bestMatch = bestMatches[0]
-        }
-
-        const { confirm } = await prompts({
-          type: 'confirm',
-          name: 'confirm',
-          message: `Is "${bestMatch}" the function you want to copy?`,
-          initial: true,
-        })
-
-        if (!confirm) {
-          process.exit(1)
-        }
-      } else {
-        bestMatch = bestMatches[0]
-      }
-    }
-
-    bestMatchName = bestMatch.split('/').at(-1)!
+    bestMatch = funcPath
+    bestMatchName = funcName
 
     let copied = 0
 
@@ -125,16 +76,18 @@ export async function addOverride(
     console.log(`${copied} files copied.`)
   })
 
+  const { default: build } = await import('./build')
+  await build()
+
+  console.log()
+
   // Commit the override to the current branch, using radashi-bot as
   // the author.
   await botCommit(`chore: override ${bestMatchName!}`, {
     cwd: env.root,
-    add: ['overrides'],
+    add: ['mod.ts', 'overrides'],
   })
   info('\nOverride committed to the current branch.')
-
-  const { default: build } = await import('./build')
-  await build()
 }
 
 async function tryCopyFile(src: string, dst: string) {

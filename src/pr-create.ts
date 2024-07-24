@@ -15,15 +15,28 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
 
   await cloneRadashi(env)
 
-  const { sourceFiles, overrides } = await findSources(env, [
-    'src',
-    'overrides',
-  ])
+  const { default: prompts } = await import('prompts')
 
-  for (const { files, type } of [
-    { files: sourceFiles, type: 'src' },
-    { files: overrides, type: 'overrides' },
-  ]) {
+  const { branchName } = await prompts({
+    type: 'text',
+    name: 'branchName',
+    message: 'Enter a name for the new branch:',
+  })
+
+  if (!branchName) {
+    process.exit(1)
+  }
+
+  await execa('git', ['checkout', '-b', branchName], {
+    cwd: env.radashiDir,
+  })
+
+  const pathsInside = await findSources(env, ['src', 'overrides'])
+
+  for (const [type, files] of Object.entries(pathsInside)) {
+    if (!files) {
+      continue
+    }
     for (const file of files) {
       const funcPath = relative(env.root, file)
         .replace(/^(overrides\/)?src\//, '')
@@ -31,8 +44,7 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
 
       for (const folder of projectFolders) {
         const inPath = join(
-          env.root,
-          type === 'overrides' ? 'overrides' : '',
+          type === 'src' ? env.root : env.overrideDir,
           folder.name,
           funcPath + folder.extension,
         )
@@ -52,6 +64,19 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
     }
   }
 
+  let breakingChange = flags.breakingChange
+  if (breakingChange == null) {
+    const { response }: { response: boolean } = await prompts({
+      type: 'confirm',
+      name: 'response',
+      message: 'Is this a breaking change?',
+    })
+    if (response == null) {
+      process.exit(0)
+    }
+    breakingChange = response
+  }
+
   await execa(
     'gh',
     sift([
@@ -66,4 +91,35 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
       cwd: env.radashiDir,
     },
   )
+
+  const forkUrl = await execa('git', ['remote', 'get-url', 'fork'], {
+    cwd: env.radashiDir,
+    reject: false,
+  }).then(({ stdout }) => stdout.trim())
+
+  if (!forkUrl) {
+    const { forkUrl } = await prompts({
+      type: 'text',
+      name: 'forkUrl',
+      message:
+        'Please enter the Github user or organization name whose Radashi fork you have push privileges for:',
+      validate: value => {
+        if (!value) return 'The URL cannot be empty'
+        return true
+      },
+    })
+
+    if (!forkUrl) {
+      process.exit(0)
+    }
+
+    await execa('git', ['remote', 'add', 'fork', forkUrl], {
+      cwd: env.radashiDir,
+    })
+  }
+
+  await execa('git', ['push', '-u', 'fork', branchName], {
+    cwd: env.radashiDir,
+    stdio: 'inherit',
+  })
 }

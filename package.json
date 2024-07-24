@@ -18,6 +18,11 @@
       "default": "./dist/vitest/plugin.js"
     }
   },
+  "files": [
+    "bin",
+    "config",
+    "dist"
+  ],
   "keywords": [
     "radashi",
     "cli"

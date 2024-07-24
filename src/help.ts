@@ -8,7 +8,9 @@ export async function help() {
 
       This tool helps you quickly add your own functions, edit existing functions, and even contribute your work back upstream. You might be thinking “I can already do all that!” but we believe this tool will make it easier than ever.
 
-      In a typical utility library, you'd have an “umbrella file” that exports your functions from all the little modules. The Radashi CLI will generate this file for you! Just build the project and your "mod.ts" file will be magically up-to-date.
+      In a typical utility library, you'd have an “umbrella file” that exports your functions from all the little modules. The Radashi CLI will generate that file for you! Just build the project and your "mod.ts" file will be magically up-to-date.
+
+      ${bold('TIP:')} You can use number keys to jump to a specific page in the tutorial.
     `,
     dedent`
       First, let's learn how this CLI can help you add a new function to your Radashi.

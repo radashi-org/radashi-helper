@@ -1,15 +1,60 @@
+import { yellow } from 'kleur/colors'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rename } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
+import { objectify } from 'radashi'
 import { rimraf } from 'rimraf'
 import { getEnv } from './env'
 import { cwdRelative } from './util/cwdRelative'
+import { findSources } from './util/findSources'
 import { getRadashiGroups } from './util/getRadashiGroups'
 import { fatal, info } from './util/logger'
 import { projectFolders } from './util/projectFolders'
 
-export async function moveFunction(funcPath: string) {
+export async function moveFunction(funcPath?: string) {
   const env = getEnv()
+
+  if (!funcPath) {
+    const pathsInside = await findSources(env, ['src', 'overrides'])
+
+    console.log(pathsInside)
+
+    const { src: sourceFuncs = [], overrides: overrideFuncs = [] } = objectify(
+      Object.entries(pathsInside),
+      ([type]) => type,
+      ([type, sourcePaths]) => {
+        const sourceRoot = join(
+          type === 'src' ? env.root : env.overrideDir,
+          'src',
+        )
+        const funcPaths = sourcePaths?.map(sourcePath =>
+          relative(sourceRoot, sourcePath).replace(/\.ts$/, ''),
+        )
+        console.log({ type, sourceRoot, sourcePaths, funcPaths })
+        return funcPaths
+      },
+    )
+
+    console.log({ sourceFuncs, overrideFuncs })
+
+    const { default: prompts } = await import('prompts')
+
+    const { selectedFunc }: { selectedFunc: string } = await prompts({
+      type: 'autocomplete',
+      name: 'selectedFunc',
+      message: 'Select a function to move:',
+      choices: [...sourceFuncs, ...overrideFuncs].sort().map(funcPath => ({
+        title: funcPath,
+        value: funcPath,
+      })),
+    })
+
+    if (!selectedFunc) {
+      process.exit(0)
+    }
+
+    funcPath = selectedFunc
+  }
 
   if (!existsSync(join(env.root, 'src', funcPath + '.ts'))) {
     fatal(`Function ${funcPath} was not found in ${env.root}/src`)
@@ -28,6 +73,10 @@ export async function moveFunction(funcPath: string) {
     ],
   })
 
+  if (!action) {
+    process.exit(0)
+  }
+
   const [prevGroup, prevFuncName] = funcPath.split('/')
 
   let [group, funcName] = [prevGroup, prevFuncName]
@@ -35,7 +84,7 @@ export async function moveFunction(funcPath: string) {
   if (action === 'move' || action === 'both') {
     const groups = await getRadashiGroups(env)
     const { selectedGroup }: { selectedGroup: string } = await prompts({
-      type: 'select',
+      type: 'autocomplete',
       name: 'selectedGroup',
       message: 'Select a group for the function:',
       choices: [
@@ -110,4 +159,12 @@ export async function moveFunction(funcPath: string) {
       await rimraf(prevDir)
     }
   }
+
+  console.log()
+  console.log(
+    yellow('ATTN') +
+      'This command has only renamed the files.\n' +
+      '     It didn‘t edit the codebase or commit the changes.',
+  )
+  console.log()
 }

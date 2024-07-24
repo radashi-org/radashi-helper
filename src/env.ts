@@ -3,10 +3,18 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { PackageJson } from 'type-fest'
 
+// These config options don't have default values.
+interface OptionalConfig {
+  /**
+   * The editor to use when opening a new function.
+   */
+  editor?: string
+}
+
 /**
  * The config located at `./radashi.json`
  */
-export interface UserConfig {
+export interface UserConfig extends OptionalConfig {
   /**
    * Whether to emit TypeScript declaration files.
    *
@@ -27,11 +35,14 @@ export interface UserConfig {
   outDir?: string
 }
 
-export interface Config extends Required<UserConfig> {}
+export interface Config
+  extends Required<Omit<UserConfig, keyof OptionalConfig>>,
+    OptionalConfig {}
 
 export interface Env {
   pkg: PackageJson
   config: Config
+  configPath: string
   root: string
   radashiDir: string
   overrideDir: string
@@ -53,30 +64,44 @@ export function getEnv(root?: string | void): Env {
   const radashiDir = join(root, '.radashi/upstream')
   const overrideDir = join(root, 'overrides')
 
+  const [configPath, config] = getConfig(root)
+
   return {
     pkg,
     root,
-    config: getConfig(root),
+    config,
+    configPath,
     radashiDir,
     overrideDir,
   }
 }
 
-function getConfig(root: string): Config {
-  let config: UserConfig
+function getConfig(root: string) {
+  const configPath = join(root, 'radashi.json')
+
+  let userConfig: UserConfig
   try {
-    config = JSON.parse(
-      readFileSync(join(root, 'radashi.json'), 'utf8'),
-    ) as UserConfig
+    userConfig = JSON.parse(readFileSync(configPath, 'utf8')) as UserConfig
   } catch (error) {
     console.error('Error parsing radashi.json:', error)
-    config = {} as UserConfig
+    userConfig = {} as UserConfig
   }
-  return {
+
+  let editor = userConfig.editor?.replace(
+    /^\$EDITOR$/,
+    process.env.EDITOR ?? '',
+  )
+  if (editor === '!') {
+    editor = ''
+  }
+
+  const config: Config = {
     dts: true,
     formats: ['esm'],
-    branch: 'main',
-    ...config,
-    outDir: resolve(root, config.outDir ?? 'dist'),
+    ...userConfig,
+    outDir: resolve(root, userConfig.outDir ?? 'dist'),
+    editor: editor || undefined,
   }
+
+  return [configPath, config] as const
 }
