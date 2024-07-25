@@ -53,9 +53,6 @@ importers:
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
-      radashi:
-        specifier: 12.2.0-beta.4aac7d7
-        version: 12.2.0-beta.4aac7d7
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -75,9 +72,12 @@ importers:
       prettier-plugin-pkg:
         specifier: ^0.18.1
         version: 0.18.1(prettier@3.3.3)
+      radashi:
+        specifier: 12.2.0-beta.83909af
+        version: 12.2.0-beta.83909af
       tsup:
         specifier: ^8.1.2
-        version: 8.1.2(postcss@8.4.39)(typescript@5.5.3)
+        version: 8.1.2(postcss@8.4.40)(typescript@5.5.3)
       type-fest:
         specifier: ^4.22.0
         version: 4.22.0
@@ -402,8 +402,8 @@ packages:
     resolution: {integrity: sha512-G/M/tIiMrTAxEWRfLfQJMmGNX28IxBg4PBz8XqQhqUHLFI6TL2htpIB1iQCj144V5ee/JaKyT9/WZ0MGZWfA7A==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
 
-  '@eslint/config-array@0.17.0':
-    resolution: {integrity: sha512-A68TBu6/1mHHuc5YJL0U0VVeGNiklLAL6rRmhTCP2B5XjWLMnrX+HkO+IAXyHvks5cyyY1jjK5ITPQ1HGS2EVA==}
+  '@eslint/config-array@0.17.1':
+    resolution: {integrity: sha512-BlYOpej8AQ8Ev9xVqroV7a02JK3SkBAaN9GfMMH9W6Ch8FlQlkjGw4Ir7+FgYwfirivAf4t+GtzuAxqfukmISA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/eslintrc@3.1.0':
@@ -1288,6 +1288,10 @@ packages:
     resolution: {integrity: sha512-0vzE+lAiG7hZl1/9I8yzKLx3aR9Xbof3fBHKunvMfOCYAtMhrsnccJY2iTURb9EZd5+pLuiNV9/c/GZJOHsgIw==}
     engines: {node: ^10 || ^12 || >=14}
 
+  postcss@8.4.40:
+    resolution: {integrity: sha512-YF2kKIUzAofPMpfH6hOi2cGnv/HrUlfucspc7pDyvv7kGdqXrfj8SCl/t8owkEgKEuu8ZcRjSOxFxVLqwChZ2Q==}
+    engines: {node: ^10 || ^12 || >=14}
+
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
@@ -1318,8 +1322,8 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
-  radashi@12.2.0-beta.4aac7d7:
-    resolution: {integrity: sha512-RSMjIHchnFeiz5QDf7XA1vOu/60cV2nsEXdsX8+EEI1cdsuvq+6r2GqvTZZ9f8X4VSdo2NbKfwcE6YW1z41ixw==}
+  radashi@12.2.0-beta.83909af:
+    resolution: {integrity: sha512-nPQqyCP3iDi9I85WypLXJgPCP1XTeXwBP+vhRnnFWDoKOeslwJy5IXdM84L8sE0YJ1zypicJfvo+wPwFvWgYyw==}
     engines: {node: '>=16.0.0'}
 
   readdirp@3.6.0:
@@ -1758,7 +1762,7 @@ snapshots:
 
   '@eslint-community/regexpp@4.11.0': {}
 
-  '@eslint/config-array@0.17.0':
+  '@eslint/config-array@0.17.1':
     dependencies:
       '@eslint/object-schema': 2.1.4
       debug: 4.3.5
@@ -2186,7 +2190,7 @@ snapshots:
     dependencies:
       '@eslint-community/eslint-utils': 4.4.0(eslint@9.7.0)
       '@eslint-community/regexpp': 4.11.0
-      '@eslint/config-array': 0.17.0
+      '@eslint/config-array': 0.17.1
       '@eslint/eslintrc': 3.1.0
       '@eslint/js': 9.7.0
       '@humanwhocodes/module-importer': 1.0.1
@@ -2620,17 +2624,24 @@ snapshots:
 
   pirates@4.0.6: {}
 
-  postcss-load-config@6.0.1(postcss@8.4.39):
+  postcss-load-config@6.0.1(postcss@8.4.40):
     dependencies:
       lilconfig: 3.1.2
     optionalDependencies:
-      postcss: 8.4.39
+      postcss: 8.4.40
 
   postcss@8.4.39:
     dependencies:
       nanoid: 3.3.7
       picocolors: 1.0.1
       source-map-js: 1.2.0
+
+  postcss@8.4.40:
+    dependencies:
+      nanoid: 3.3.7
+      picocolors: 1.0.1
+      source-map-js: 1.2.0
+    optional: true
 
   prelude-ls@1.2.1: {}
 
@@ -2653,7 +2664,7 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  radashi@12.2.0-beta.4aac7d7: {}
+  radashi@12.2.0-beta.83909af: {}
 
   readdirp@3.6.0:
     dependencies:
@@ -2790,7 +2801,7 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  tsup@8.1.2(postcss@8.4.39)(typescript@5.5.3):
+  tsup@8.1.2(postcss@8.4.40)(typescript@5.5.3):
     dependencies:
       bundle-require: 5.0.0(esbuild@0.23.0)
       cac: 6.7.14
@@ -2801,14 +2812,14 @@ snapshots:
       execa: 5.1.1
       globby: 11.1.0
       joycon: 3.1.1
-      postcss-load-config: 6.0.1(postcss@8.4.39)
+      postcss-load-config: 6.0.1(postcss@8.4.40)
       resolve-from: 5.0.0
       rollup: 4.18.1
       source-map: 0.8.0-beta.0
       sucrase: 3.35.0
       tree-kill: 1.2.2
     optionalDependencies:
-      postcss: 8.4.39
+      postcss: 8.4.40
       typescript: 5.5.3
     transitivePeerDependencies:
       - jiti

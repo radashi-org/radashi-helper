@@ -15,25 +15,33 @@ export async function queryFuncs(
   if (options.exactMatch) {
     funcPath = query
   } else {
-    const loweredQuery = query.toLowerCase()
-    const scores = funcPaths.map(funcPath => {
-      const funcName = funcPath.split('/').at(-1)!
-      return Math.min(
-        similarity(loweredQuery, funcName.toLowerCase()),
-        similarity(loweredQuery, funcPath.toLowerCase()),
-      )
-    })
+    let bestMatches: string[]
+    let confirm = false
 
-    const bestScore = Math.min(...scores)
-    const bestMatches = funcPaths.filter((_file, i) => {
-      return scores[i] === bestScore
-    })
+    if (query !== '') {
+      const loweredQuery = query.toLowerCase()
+      const scores = funcPaths.map(funcPath => {
+        const funcName = funcPath.split('/').at(-1)!
+        return Math.min(
+          similarity(loweredQuery, funcName.toLowerCase()),
+          similarity(loweredQuery, funcPath.toLowerCase()),
+        )
+      })
+
+      const bestScore = Math.min(...scores)
+      bestMatches = funcPaths.filter((_file, i) => {
+        return scores[i] === bestScore
+      })
+      confirm = bestScore > 0
+    } else {
+      bestMatches = funcPaths
+    }
 
     if (!bestMatches.length) {
       fatal(`No source file named "${query}" was found in Radashi`)
     }
 
-    if (bestScore > 0) {
+    if (bestMatches.length > 1) {
       const prompts = (await import('prompts')).default
 
       if (bestMatches.length > 1) {
@@ -53,17 +61,19 @@ export async function queryFuncs(
       } else {
         funcPath = bestMatches[0]
 
-        const { confirm }: { confirm: boolean } = await prompts({
-          type: 'confirm',
-          name: 'confirm',
-          message:
-            options.confirmMessage?.replace('{funcPath}', funcPath) ||
-            `Is "${funcPath}" the function you wanted?`,
-          initial: true,
-        })
+        if (confirm) {
+          const { confirm }: { confirm: boolean } = await prompts({
+            type: 'confirm',
+            name: 'confirm',
+            message:
+              options.confirmMessage?.replace('{funcPath}', funcPath) ||
+              `Is "${funcPath}" the function you wanted?`,
+            initial: true,
+          })
 
-        if (!confirm) {
-          process.exit(1)
+          if (!confirm) {
+            process.exit(1)
+          }
         }
       }
     } else {

@@ -68,7 +68,7 @@ app
       )
       .action(async flags => {
         const { createPullRequest } = await import('./pr-create')
-        createPullRequest(flags)
+        await createPullRequest(flags)
       })
 
     pr.command(
@@ -76,10 +76,47 @@ app
       'Copy files from a radashi-org/radashi pull request into your fork',
     ).action(async (prNumber: string) => {
       const { importPullRequest } = await import('./pr-import')
-      importPullRequest(prNumber)
+      await importPullRequest(prNumber)
     })
 
     run(process.argv, pr, 1)
+  })
+
+app
+  .command('open [query]', 'Open function files in your editor')
+  .option('-s, --source', 'Open the source file')
+  .option('-t, --test', 'Open the test file (and type tests)')
+  .option('-T, --type-test', 'Open the type tests')
+  .option('-b, --benchmark', 'Open the benchmark file')
+  .option('-d, --docs', 'Open the documentation file')
+  .option('-A, --all', 'Open all related files')
+  .action(async (query, flags) => {
+    // If the user specifies the all flag, open all related files.
+    if (flags.all) {
+      flags.source =
+        flags.test =
+        flags.typeTest =
+        flags.benchmark =
+        flags.docs =
+          true
+    }
+    // If the user doesn't specify any flags, open the source file.
+    else if (
+      flags.test == null &&
+      flags.typeTest == null &&
+      flags.benchmark == null &&
+      flags.docs == null
+    ) {
+      flags.source = true
+    }
+    // If the user specifies a test flag, we assume they want to open
+    // the type test as well.
+    else if (flags.typeTest == null) {
+      flags.typeTest = flags.test
+    }
+
+    const { openFunction } = await import('./open')
+    await openFunction(query, flags)
   })
 
 app
