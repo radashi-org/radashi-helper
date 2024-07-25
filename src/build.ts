@@ -1,20 +1,22 @@
 import { BuildOptions, build, context as createContext } from 'esbuild'
 import { execa } from 'execa'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { sift } from 'radashi'
 import { rimraf } from 'rimraf'
 import { getEnv } from './env'
 import { esbuildRadashi } from './esbuild/plugin'
 
-export default async function (flags?: { watch?: boolean }) {
+export default async function (flags?: { watch?: boolean; outDir?: string }) {
   const env = getEnv()
   const { root, config } = env
-  const { outDir } = config
 
+  const outDir = resolve(
+    process.env.RADASHI_OUT_DIR ?? flags?.outDir ?? env.outDir,
+  )
   await rimraf(outDir)
 
   const options: BuildOptions = {
-    entryPoints: [join(root, 'mod.ts')],
+    entryPoints: [env.modPath],
     external: ['radashi'],
     bundle: true,
     outfile: join(outDir, 'radashi.js'),
@@ -50,7 +52,7 @@ export default async function (flags?: { watch?: boolean }) {
 
   // DTS
   if (config.dts) {
-    await emitDeclarationTypes(root, join(outDir, 'dts'), flags)
+    await emitDeclarationTypes(root, join(outDir, 'types'), flags)
   }
 }
 

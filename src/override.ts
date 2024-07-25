@@ -85,7 +85,7 @@ export async function addOverride(
   // the author.
   await botCommit(`chore: override ${bestMatchName!}`, {
     cwd: env.root,
-    add: ['mod.ts', 'overrides'],
+    add: ['package/mod.ts', 'overrides'],
   })
   info('\nOverride committed to the current branch.')
 }

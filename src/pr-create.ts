@@ -8,26 +8,25 @@ import { cloneRadashi } from './util/cloneRadashi'
 import { cwdRelative } from './util/cwdRelative'
 import { debug } from './util/debug'
 import { findSources } from './util/findSources'
+import { fatal, info } from './util/logger'
 import { projectFolders } from './util/projectFolders'
 
 export async function createPullRequest(flags: { breakingChange?: boolean }) {
   const env = getEnv()
 
-  await cloneRadashi(env)
+  const currentBranch = await execa(
+    'git',
+    ['rev-parse', '--abbrev-ref', 'HEAD'],
+    { cwd: env.root },
+  ).then(({ stdout }) => stdout.trim())
 
-  const { default: prompts } = await import('prompts')
-
-  const { branchName } = await prompts({
-    type: 'text',
-    name: 'branchName',
-    message: 'Enter a name for the new branch:',
-  })
-
-  if (!branchName) {
-    process.exit(1)
+  if (currentBranch === 'main') {
+    fatal('Cannot create a PR from your main branch')
   }
 
-  await execa('git', ['checkout', '-b', branchName], {
+  await cloneRadashi(env)
+
+  await execa('git', ['checkout', '-b', currentBranch], {
     cwd: env.radashiDir,
   })
 
@@ -66,6 +65,7 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
 
   let breakingChange = flags.breakingChange
   if (breakingChange == null) {
+    const { default: prompts } = await import('prompts')
     const { response }: { response: boolean } = await prompts({
       type: 'confirm',
       name: 'response',
@@ -77,34 +77,34 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
     breakingChange = response
   }
 
-  await execa(
-    'gh',
-    sift([
-      'pr',
-      'create',
-      '--fill',
-      '--web',
-      flags.breakingChange && '--base=next',
-    ]),
-    {
-      stdio: 'inherit',
-      cwd: env.radashiDir,
-    },
+  const remotes = await execa('git', ['remote', '-v'], {
+    cwd: env.radashiDir,
+  }).then(({ stdout }) =>
+    stdout
+      .trim()
+      .split('\n')
+      .map(line => line.split(/\s+/)),
   )
 
-  const forkUrl = await execa('git', ['remote', 'get-url', 'fork'], {
-    cwd: env.radashiDir,
-    reject: false,
-  }).then(({ stdout }) => stdout.trim())
+  console.log('remotes', remotes)
 
+  const forkUrl = remotes.find(remote => remote[0] === 'fork')?.[1]
   if (!forkUrl) {
+    const { default: prompts } = await import('prompts')
+
     const { forkUrl } = await prompts({
       type: 'text',
       name: 'forkUrl',
-      message:
-        'Please enter the Github user or organization name whose Radashi fork you have push privileges for:',
+      message: 'Please enter the Git URL for your personal Radashi fork:',
       validate: value => {
         if (!value) return 'The URL cannot be empty'
+        try {
+          new URL(value)
+        } catch {
+          return 'Please enter a valid URL'
+        }
+        if (!value.includes('github.com'))
+          return 'Please enter a valid GitHub URL'
         return true
       },
     })
@@ -113,13 +113,25 @@ export async function createPullRequest(flags: { breakingChange?: boolean }) {
       process.exit(0)
     }
 
-    await execa('git', ['remote', 'add', 'fork', forkUrl], {
+    await execa('git', ['remote', 'add', 'pr', forkUrl], {
       cwd: env.radashiDir,
     })
+
+    info(`Added 'pr' remote with URL: ${forkUrl}`)
   }
 
-  await execa('git', ['push', '-u', 'fork', branchName], {
-    cwd: env.radashiDir,
-    stdio: 'inherit',
-  })
+  // await execa(
+  //   'gh',
+  //   sift([
+  //     'pr',
+  //     'create',
+  //     '--fill',
+  //     '--web',
+  //     flags.breakingChange && '--base=next',
+  //   ]),
+  //   {
+  //     stdio: 'inherit',
+  //     cwd: env.radashiDir,
+  //   },
+  // )
 }

@@ -30,7 +30,7 @@ export async function findSources(
       },
       {
         id: 'overrides' as const,
-        glob: ['overrides/src/**/*.ts'],
+        glob: ['overrides/src/**/*.ts', '!overrides/src/*.ts'],
       },
       {
         id: 'rewired' as const,

@@ -1,6 +1,6 @@
 import escalade from 'escalade/sync'
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import type { PackageJson } from 'type-fest'
 
 // These config options don't have default values.
@@ -27,12 +27,6 @@ export interface UserConfig extends OptionalConfig {
    * @default ['esm']
    */
   formats?: ('esm' | 'cjs')[]
-  /**
-   * The directory to output the bundles to.
-   *
-   * @default 'dist'
-   */
-  outDir?: string
 }
 
 export interface Config
@@ -44,6 +38,8 @@ export interface Env {
   config: Config
   configPath: string
   root: string
+  modPath: string
+  outDir: string
   radashiDir: string
   overrideDir: string
 }
@@ -69,8 +65,10 @@ export function getEnv(root?: string | void): Env {
   return {
     pkg,
     root,
+    modPath: join(root, 'mod.ts'),
     config,
     configPath,
+    outDir: join(root, 'dist'),
     radashiDir,
     overrideDir,
   }
@@ -95,11 +93,14 @@ function getConfig(root: string) {
     editor = ''
   }
 
+  const userFormats = userConfig.formats?.filter(
+    value => value === 'esm' || value === 'cjs',
+  )
+
   const config: Config = {
     dts: true,
-    formats: ['esm'],
     ...userConfig,
-    outDir: resolve(root, userConfig.outDir ?? 'dist'),
+    formats: userFormats && userFormats.length > 0 ? userFormats : ['esm'],
     editor: editor || undefined,
   }
 

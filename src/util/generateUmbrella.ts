@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { flat } from 'radashi'
 import { Env } from '../env'
@@ -10,49 +11,115 @@ export async function generateUmbrella(env: Env) {
   // Update rewired files on every build.
   await updateRewired(env)
 
-  const pathsInside = await findSources(env)
-  const namesBlocked = flat(Object.values(pathsInside)).flatMap(sourcePath => {
-    return getExportedNames(sourcePath)
-  })
+  const typesPath = join(env.root, 'src/types.ts')
+  const overrideTypesPath = join(env.root, 'overrides/src/types.ts')
 
-  let code = printExports(
+  const pathsInside = await findSources(env)
+  const namesBlocked = flat(Object.values(pathsInside))
+    .concat(typesPath, overrideTypesPath)
+    .flatMap(sourcePath => {
+      return getExportedNames(sourcePath)
+    })
+
+  function parseExports(
+    file: string,
+    filter?: (exportName: string) => boolean,
+  ) {
+    const exportedTypeNames = getExportedNames(file, { types: 'only' })
+    const exportedNames = getExportedNames(file)
+
+    const forwarded = filter ? exportedNames.filter(filter) : exportedNames
+    const exports = forwarded.map(name =>
+      exportedTypeNames.includes(name) ? `type ${name}` : name,
+    )
+
+    return { exports }
+  }
+
+  const radashiUpstream = parseExports(
     join(env.root, 'node_modules/radashi/dist/radashi.d.ts'),
-    'radashi',
     // Don't re-export names that were defined in the custom Radashi.
     exportName => !namesBlocked.includes(exportName),
   )
 
-  if (pathsInside.src.length) {
+  let code = printExports(
+    radashiUpstream.exports,
+    './node_modules/radashi/dist/radashi',
+  )
+
+  const srcModules = pathsInside.src
+    .map(file => ({ file, exports: parseExports(file).exports }))
+    .filter(mod => mod.exports.length > 0)
+
+  if (srcModules.length) {
     code += dedent`
       \n
       // Our custom functions.
-      ${pathsInside.src
-        .map(file => {
-          return printExports(file, './' + relative(env.root, file))
+      ${srcModules
+        .map(mod => {
+          return printExports(mod.exports, './' + relative(env.root, mod.file))
         })
         .join('\n')}
     `
   }
 
-  if (pathsInside.overrides.length) {
+  const overrides = pathsInside.overrides
+    .map(file => ({
+      file,
+      exports: parseExports(file).exports,
+    }))
+    .filter(mod => mod.exports.length > 0)
+
+  if (overrides.length) {
     code += dedent`
       \n
       // Our overrides.
-      ${pathsInside.overrides
-        .map(file => {
-          return printExports(file, './' + relative(env.root, file))
+      ${overrides
+        .map(mod => {
+          return printExports(mod.exports, './' + relative(env.root, mod.file))
         })
         .join('\n')}
     `
   }
 
-  if (pathsInside.rewired.length) {
+  const typesModule = existsSync(typesPath)
+    ? parseExports(typesPath)
+    : undefined
+
+  const overrideTypesModule = existsSync(overrideTypesPath)
+    ? parseExports(overrideTypesPath)
+    : undefined
+
+  if (typesModule?.exports.length || overrideTypesModule?.exports.length) {
+    code += dedent`
+      \n
+      // Our types.\n
+    `
+    if (overrideTypesModule?.exports.length) {
+      code += printExports(
+        overrideTypesModule.exports,
+        './' + relative(env.root, overrideTypesPath),
+      )
+    }
+    if (typesModule?.exports.length) {
+      code += printExports(
+        typesModule.exports,
+        './' + relative(env.root, typesPath),
+      )
+    }
+  }
+
+  const rewiredModules = pathsInside.rewired
+    .map(file => ({ file, exports: parseExports(file).exports }))
+    .filter(mod => mod.exports.length > 0)
+
+  if (rewiredModules.length) {
     code += dedent`
       \n
       // Rewired to use our overrides.
-      ${pathsInside.rewired
-        .map(file => {
-          return printExports(file, './' + relative(env.root, file))
+      ${rewiredModules
+        .map(mod => {
+          return printExports(mod.exports, './' + relative(env.root, mod.file))
         })
         .join('\n')}
     `
@@ -61,18 +128,6 @@ export async function generateUmbrella(env: Env) {
   return code + '\n'
 }
 
-function printExports(
-  file: string,
-  specifier = file,
-  filter?: (exportName: string) => boolean,
-) {
-  const exportedTypeNames = getExportedNames(file, { types: 'only' })
-  const exportedNames = getExportedNames(file)
-
-  const forwarded = filter ? exportedNames.filter(filter) : exportedNames
-  const exports = forwarded.map(name =>
-    exportedTypeNames.includes(name) ? `type ${name}` : name,
-  )
-
-  return `export { ${exports.join(', ')} } from '${specifier}'`
+function printExports(exportedNames: string[], specifier: string) {
+  return `export { ${exportedNames.join(', ')} } from '${specifier}'`
 }

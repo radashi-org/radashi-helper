@@ -1,6 +1,5 @@
 import { Plugin } from 'esbuild'
 import { writeFile } from 'node:fs/promises'
-import { relative } from 'node:path'
 import { Env, getEnv } from '../env'
 import { generateUmbrella } from '../util/generateUmbrella'
 
@@ -11,7 +10,7 @@ export function esbuildRadashi(options?: { root?: string; env?: Env }): Plugin {
     name: 'esbuild-radashi',
     setup(build) {
       build.onLoad({ filter: /\/mod\.ts$/, namespace: 'file' }, async args => {
-        if (relative(env.root, args.path) === 'mod.ts') {
+        if (args.path === env.modPath) {
           const code = await generateUmbrella(env)
           await writeFile(
             args.path,

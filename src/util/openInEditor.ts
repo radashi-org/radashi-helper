@@ -3,12 +3,14 @@ import { proxied } from 'radashi'
 import { Env } from '../env'
 import { updateRadashiConfig } from './updateRadashiConfig'
 
-export async function openInEditor(file: string, env: Env) {
-  let editor: string
+let forcedEditor: string | undefined
 
-  if (env.config.editor?.[0] === '!') {
-    editor = env.config.editor.slice(1)
-  } else {
+export async function openInEditor(file: string, env: Env) {
+  let editor = forcedEditor || env.config.editor
+
+  if (editor?.[0] === '!') {
+    editor = editor.slice(1)
+  } else if (!forcedEditor) {
     const { default: prompts } = await import('prompts')
 
     // Map program names to human-readable names.
@@ -103,14 +105,15 @@ export async function openInEditor(file: string, env: Env) {
       editor = response
     }
 
+    forcedEditor = editor
     await updateRadashiConfig(env, {
-      editor: response,
+      editor: response === 'custom' ? editor : response,
     })
   }
 
   if (editor) {
     try {
-      await execa(editor, [file], { stdio: 'inherit' })
+      await execa(editor, [file])
     } catch (error) {
       console.error(`Failed to open file with ${editor}:`, error)
     }

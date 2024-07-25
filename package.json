@@ -28,13 +28,14 @@
     "cli"
   ],
   "scripts": {
-    "build": "tsup --clean",
-    "dev": "tsup --watch"
+    "build": "tsup-node --clean",
+    "dev": "tsup-node --clean --watch --sourcemap"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
     "@babel/parser": "^7.24.8",
     "@typescript-eslint/parser": "^7.16.1",
+    "bumpp": "^9.4.1",
     "cac": "^6.7.14",
     "debug": "^4.3.5",
     "esbuild": "^0.23.0",
@@ -47,7 +48,6 @@
     "open": "^10.1.0",
     "parse-imports-exports": "^0.1.1",
     "prompts": "^2.4.2",
-    "radashi": "12.2.0-beta.4aac7d7",
     "rimraf": "^6.0.1"
   },
   "devDependencies": {
@@ -56,6 +56,7 @@
     "@types/prompts": "^2.4.9",
     "prettier": "^3.3.3",
     "prettier-plugin-pkg": "^0.18.1",
+    "radashi": "12.2.0-beta.83909af",
     "tsup": "^8.1.2",
     "type-fest": "^4.22.0",
     "typescript": "^5.5.3",

@@ -4,7 +4,6 @@ import { copyFile, mkdir } from 'fs/promises'
 import globRegex from 'glob-regex'
 import { yellow } from 'kleur/colors'
 import { dirname, join, relative } from 'path'
-import { objectify } from 'radashi'
 import { botCommit } from './bot'
 import { getEnv } from './env'
 import { addOverride } from './override'
@@ -15,8 +14,7 @@ import { cloneRadashi } from './util/cloneRadashi'
 import { debug } from './util/debug'
 import { dedent } from './util/dedent'
 import { findSources } from './util/findSources'
-import { getExportedNames } from './util/getExportedNames'
-import { fatal } from './util/logger'
+import { fatal, info } from './util/logger'
 
 export async function importPullRequest(prNumber: string) {
   if (Number.isNaN(+prNumber)) {
@@ -42,8 +40,16 @@ export async function importPullRequest(prNumber: string) {
   await assertRepoClean(env.root)
   await cloneRadashi(env)
 
+  // Delete previous PR branch.
+  await execa('git', ['branch', '-D', 'pr-' + prNumber], {
+    cwd: env.radashiDir,
+    reject: false,
+  })
+
+  info('\nChecking out PR...')
+
   // Checkout the PR.
-  await execa('gh', ['pr', 'checkout', prNumber], {
+  await execa('gh', ['pr', 'checkout', prNumber, '-b', 'pr-' + prNumber], {
     cwd: env.radashiDir,
     stdio: 'inherit',
   }).catch(error => {
@@ -55,6 +61,8 @@ export async function importPullRequest(prNumber: string) {
   const targetBranch = await getTargetBranch({
     cwd: env.radashiDir,
   })
+
+  info('\nRebasing PR...')
 
   // Rebase onto the upstream branch.
   await execa('git', ['rebase', targetBranch], {
@@ -74,12 +82,13 @@ export async function importPullRequest(prNumber: string) {
     cwd: env.radashiDir,
   })
 
-  const paths = await findSources(env)
-  const names = objectify(
-    Object.entries(paths),
-    ([name]) => name as keyof typeof paths,
-    ([, files]) => files.flatMap(file => getExportedNames(file)),
-  )
+  const pathsIn = await findSources(env)
+
+  // const namesIn = objectify(
+  //   Object.entries(pathsIn),
+  //   ([name]) => name as keyof typeof pathsIn,
+  //   ([, files]) => files.flatMap(file => getExportedNames(file)),
+  // )
 
   // Sort source files first (for error messages).
   const srcGlob = globRegex('src/*/*.ts')
@@ -103,13 +112,13 @@ export async function importPullRequest(prNumber: string) {
 
       if (change.file.startsWith('src/')) {
         const srcPath = join(env.root, change.file)
-        if (names.sourceFiles.includes(srcPath)) {
+        if (pathsIn.src.includes(srcPath)) {
           fatal(
             `Cannot import PR. File named "${change.file}" is already a source file created by you.`,
           )
         }
       }
-    } else if (change.status === 'M') {
+    } else if (change.status === 'M' && change.file !== 'src/mod.ts') {
       modifiedFiles.push(change.file)
 
       if (change.file.startsWith('src/')) {
@@ -117,7 +126,7 @@ export async function importPullRequest(prNumber: string) {
           env.root,
           change.file.replace('src/', 'overrides/src/'),
         )
-        if (names.overrides.includes(overridePath)) {
+        if (pathsIn.overrides.includes(overridePath)) {
           fatal(
             `Cannot import PR. File named "${change.file}" already exists in the overrides folder.`,
           )
@@ -126,7 +135,7 @@ export async function importPullRequest(prNumber: string) {
         const funcPath = relative(env.overrideDir, overridePath).slice(0, -3)
         const rewiredPath = overridePath.replace('/src/', '/rewired/')
 
-        if (names.rewired.includes(rewiredPath)) {
+        if (pathsIn.rewired.includes(rewiredPath)) {
           // Remove rewired files that were modified by the PR.
           await undoRewire(funcPath, env)
         }
@@ -186,6 +195,10 @@ export async function importPullRequest(prNumber: string) {
 
     prTitle = `${type}: ${description}`
   }
+
+  // Update mod.ts
+  const { default: build } = await import('./build')
+  await build()
 
   await botCommit(prTitle, {
     cwd: env.root,

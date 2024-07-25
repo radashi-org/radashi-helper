@@ -8,7 +8,13 @@ export function getExportedNames(
   options: { types?: boolean | 'only' } = {},
 ) {
   const typesOption = options.types ?? true
-  const fileContents = readFileSync(file, 'utf8')
+
+  let fileContents: string | undefined
+  try {
+    fileContents = readFileSync(file, 'utf8')
+  } catch {
+    return []
+  }
 
   const parseResult = parse(fileContents, {
     plugins: [['typescript', { dts: file.endsWith('.d.ts') }]],

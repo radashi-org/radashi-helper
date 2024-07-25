@@ -21,6 +21,8 @@ export const cloneRadashi = memo<[env: Env], Promise<void>>(
       )
     }
 
+    console.log('branch', branch)
+
     if (existsSync(env.radashiDir)) {
       if (isExactCommit(branch)) {
         if (await isRepoInSync(branch, { cwd: env.radashiDir })) {
@@ -28,7 +30,7 @@ export const cloneRadashi = memo<[env: Env], Promise<void>>(
         }
         info('Updating radashi. Please wait...')
         // In case the ref was not found, fetch the latest changes.
-        await execa('git', ['fetch', 'origin'], {
+        await execa('git', ['fetch', 'origin', branch], {
           cwd: env.radashiDir,
           stdio: 'inherit',
         })
@@ -37,6 +39,11 @@ export const cloneRadashi = memo<[env: Env], Promise<void>>(
           stdio: 'inherit',
         })
       } else {
+        // Switch to the branch if it's not already checked out.
+        await execa('git', ['checkout', branch], {
+          cwd: env.radashiDir,
+          reject: false,
+        })
         info('Updating radashi. Please wait...')
         await execa('git', ['pull', 'origin', branch], {
           cwd: env.radashiDir,

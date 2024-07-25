@@ -7,7 +7,7 @@ const bot = {
 }
 
 export function formatBotCommit(message: string) {
-  return `git commit -m "${message}" --author='${bot.name} <${bot.email}>'`
+  return `git commit -m '${message.replace(/'/g, "\\'")}' --author='${bot.name} <${bot.email}>'`
 }
 
 export async function botCommit(
