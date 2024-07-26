@@ -21,8 +21,6 @@ export const cloneRadashi = memo<[env: Env], Promise<void>>(
       )
     }
 
-    console.log('branch', branch)
-
     if (existsSync(env.radashiDir)) {
       if (isExactCommit(branch)) {
         if (await isRepoInSync(branch, { cwd: env.radashiDir })) {

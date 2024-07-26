@@ -130,6 +130,7 @@ app
 
 app
   .command('lint [...files]', 'Check for browser compatibility issues')
+  .allowUnknownOptions()
   .action(async files => {
     const { lint } = await import('./lint')
     await lint(files)

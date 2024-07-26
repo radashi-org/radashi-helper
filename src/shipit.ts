@@ -56,7 +56,7 @@ export async function shipIt(flags: { dryRun?: boolean; debug?: boolean }) {
     )
   }
 
-  let needBump = false
+  let needBump = flags.debug === true
 
   // Check if the current package version is already published
   const { stdout, exitCode, stderr } = await execa(
@@ -88,11 +88,22 @@ export async function shipIt(flags: { dryRun?: boolean; debug?: boolean }) {
     const bumppBin = join(bumpp, 'bin/bumpp.js')
 
     console.log('')
-    const { exitCode } = await execa('node', [bumppBin], {
-      cwd: env.root,
-      stdio: 'inherit',
-      reject: false,
-    })
+    const { exitCode } = await execa(
+      'node',
+      [
+        bumppBin,
+        ...(flags.dryRun
+          ? ['--no-commit', '--no-tag']
+          : ['-c', 'v%s\n\n[skip ci]']),
+        '--no-verify',
+        '--no-push',
+      ],
+      {
+        cwd: env.root,
+        stdio: 'inherit',
+        reject: false,
+      },
+    )
     if (exitCode !== 0) {
       process.exit(exitCode)
     }
@@ -137,18 +148,10 @@ export async function shipIt(flags: { dryRun?: boolean; debug?: boolean }) {
   )
 
   // Publish to NPM
-  await execa(
-    'pnpm',
-    [
-      'publish',
-      ...(flags.dryRun ? ['--dry-run'] : []),
-      ...(flags.debug ? ['--no-git-checks'] : []),
-    ],
-    {
-      cwd: env.outDir,
-      stdio: 'inherit',
-    },
-  )
+  await execa('npm', ['publish', ...(flags.dryRun ? ['--dry-run'] : [])], {
+    cwd: env.outDir,
+    stdio: 'inherit',
+  })
 
   if (flags.dryRun) {
     info('\nDry run complete. No changes were published.')

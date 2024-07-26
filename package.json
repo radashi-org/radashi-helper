@@ -20,7 +20,7 @@
   },
   "files": [
     "bin",
-    "config",
+    "config/dist",
     "dist"
   ],
   "keywords": [
@@ -42,6 +42,7 @@
     "escalade": "^3.1.2",
     "eslint-plugin-compat": "^6.0.0",
     "execa": "^9.3.0",
+    "exit-hook": "^4.0.0",
     "fast-glob": "^3.3.2",
     "glob-regex": "^0.3.2",
     "kleur": "^4.1.5",
